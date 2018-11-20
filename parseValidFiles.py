@@ -5,8 +5,6 @@ import collections
 from gensim import models
 from gensim.models.doc2vec import LabeledSentence
 
-INPUT_NUCC_DIR = './nucc/'
-encoding = 'utf-8'
 
 def get_all_files(in_dir):
     for root, dirs, files in os.walk(in_dir):
@@ -59,7 +57,16 @@ def split_into_words(doc, name=''):
     return LabeledSentence(words=words, tags=[name])
 
 if __name__ == "__main__":
+    INPUT_NUCC_DIR = './nucc/'
+    encoding = 'utf-8'
+
     INPUT_VALI_DIR = './test{:d}/'.format(i)
-    corpus = list(get_all_files(INPUT_VALI_DIR))# + list(get_all_files(INPUT_NUCC_DIR)) 
-    vali_sentences = list(corpus_to_sentences(corpus, encoding))
+    INPUT_TRAIN_DIR = './train{:d}/'.format(i)
+    
+    vali_corpus = list(get_all_files(INPUT_VALI_DIR))# + list(get_all_files(INPUT_NUCC_DIR)) 
+    vali_sentences = list(corpus_to_sentences(vali_corpus, encoding))
+    
+    train_corpus = list(get_all_files(HIGH_PATH))
+    train_sentences = list(corpus_to_sentences(train_corpus, encoding))
+    
     

@@ -78,14 +78,17 @@ def train(sentences):
 if __name__ == '__main__':
     wiki_corpus = list(get_all_files(INPUT_DOC_DIR))
     wiki_sentences = list(corpus_to_sentences(wiki_corpus))
-    for i in range(3):
-        TRAIN_HH_DIR = './train{:d}/'.format(i)
-        OUTPUT_MODEL = 'master(validation{:d}).model'.format(i)
+    OUTPUT_MODEL = 'master(wiki-only).model'
+    model = train(wiki_sentences)
+    model.save(OUTPUT_MODEL)
+#     for i in range(3):
+#         TRAIN_HH_DIR = './train{:d}/'.format(i)
+#         OUTPUT_MODEL = 'master(validation{:d}).model'.format(i)
 
-        houhan_corpus = list(get_all_files(TRAIN_HH_DIR))
-        houhan_sentences = list(corpus_to_sentences(houhan_corpus))
+#         houhan_corpus = list(get_all_files(TRAIN_HH_DIR))
+#         houhan_sentences = list(corpus_to_sentences(houhan_corpus))
         
-        sentences = wiki_sentences + houhan_sentences
+#         sentences = wiki_sentences + houhan_sentences
         
-        model = train(sentences)
-        model.save(OUTPUT_MODEL)
+#         model = train(sentences)
+#         model.save(OUTPUT_MODEL)
