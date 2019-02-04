@@ -1,12 +1,11 @@
+import itertools
 import matplotlib.pyplot as plt
 import numpy as np
-from gensim import models
-from imblearn.over_sampling import SMOTE, ADASYN
+from imblearn.over_sampling import SMOTE
 from sklearn import svm
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
-from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier, VotingClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, classification_report
+from gensim import models
 from parseValidFiles import *
 import warnings
 warnings.filterwarnings('ignore')
@@ -36,13 +35,36 @@ def create_X_Y(DIRS):
         y = y + [i for _ in range(num)]
     return x, np.array(y)
 
+def plot_confusion_matrix(cm, classes, output_file, title='Confusion matrix', cmap=plt.cm.Blues):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig(output_file)
+    plt.clf()
+
 class Variable:
     def __init__(self):
         self.BASE_DIR = './matsumoto/houhan_doc/'
         self.HIGH_DIR = self.BASE_DIR + 'high'
         self.MID_DIR =  self.BASE_DIR + 'middle'
         self.LOW_DIR =  self.BASE_DIR + 'low'
+        self.labels = ['high', 'middle', 'low']
         self.DIRS = [self.HIGH_DIR, self.MID_DIR, self.LOW_DIR]
+
 
 variable = Variable()
 
@@ -59,9 +81,9 @@ gs = GridSearchCV(svm.SVC(class_weight="balanced"), param_grid=parameters, cv=5)
 precision = []
 recall = []
 f1_sc = []
+i = 0
 for train, test in kfold.split(x, y):
     sm = SMOTE(random_state=42, kind='svm')
-    # adasyn = ADASYN(random_state=42)
     x_res, y_res = sm.fit_resample(x[train], y[train])
     gs.fit(x_res, y_res)
     # gs.fit(x[train], y[train])
@@ -69,11 +91,9 @@ for train, test in kfold.split(x, y):
     print('Best model', gs.best_estimator_)
 
     pred = gs.predict(x[test])
-    print(confusion_matrix(y[test], pred))
-    precision.append(precision_score(y[test], pred, average="weighted"))
-    recall.append(recall_score(y[test], pred, average="weighted"))
-    f1_sc.append(f1_score(y[test], pred, average="weighted"))
-
-print("precision:{:.2f}".format(np.mean(precision)))
-print("recall:{:.2f}".format(np.mean(recall)))
-print("f1_score:{:.2f}".format(np.mean(f1_sc)))
+    cm = confusion_matrix(y[test], pred)
+    report = classification_report(y[test], pred)
+    with open('report{:d}.txt'.format(i), 'w') as f:
+        f.write(report)
+    plot_confusion_matrix(cm, classes=variable.labels, output_file='{:d}.png'.format(i))
+    i = i + 1
