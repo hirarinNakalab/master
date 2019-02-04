@@ -4,7 +4,7 @@ import numpy as np
 from imblearn.over_sampling import SMOTE
 from sklearn import svm
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, classification_report
+from sklearn.metrics import confusion_matrix, classification_report
 from gensim import models
 from parseValidFiles import *
 import warnings
@@ -65,35 +65,35 @@ class Variable:
         self.labels = ['high', 'middle', 'low']
         self.DIRS = [self.HIGH_DIR, self.MID_DIR, self.LOW_DIR]
 
-
 variable = Variable()
-
 x, y = create_X_Y(variable.DIRS)
-
 kfold = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
 
-parameters = [
-    {'kernel':['rbf'], 'gamma':np.linspace(0.001, 0.004, 50), 'C':np.linspace(10, 20, 50)},
-    # {'kernel':['linear'], 'C': [1, 10, 100, 1000]}
-]
+parameters = [{'kernel': ['rbf'], 'gamma': [0.001], 'C': [10]}]
 gs = GridSearchCV(svm.SVC(class_weight="balanced"), param_grid=parameters, cv=5)
 
-precision = []
-recall = []
-f1_sc = []
 i = 0
 for train, test in kfold.split(x, y):
-    sm = SMOTE(random_state=42, kind='svm')
-    x_res, y_res = sm.fit_resample(x[train], y[train])
-    gs.fit(x_res, y_res)
-    # gs.fit(x[train], y[train])
-    print('Best score', gs.best_score_)
-    print('Best model', gs.best_estimator_)
+    smote_frag = 1
+    print(smote_frag)
+    if smote_frag:
+        sm = SMOTE(random_state=42, kind='svm')
+        x_res, y_res = sm.fit_resample(x[train], y[train])
+        gs.fit(x_res, y_res)
+    else:
+        gs.fit(x[train], y[train])
+
+    rep_file = 'smote_report{:d}.txt'.format(i) if smote_frag else 'report{:d}.txt'.format(i)
+    cm_file = 'smote_{:d}.png'.format(i) if smote_frag else '{:d}.png'.format(i)
 
     pred = gs.predict(x[test])
     cm = confusion_matrix(y[test], pred)
     report = classification_report(y[test], pred)
-    with open('report{:d}.txt'.format(i), 'w') as f:
+    with open(rep_file, 'w') as f:
+        f.write('validation{:d}\n'.format(i))
+        f.write(str(gs.best_score_) + '\n')
+        f.write(str(gs.best_params_) + '\n')
         f.write(report)
-    plot_confusion_matrix(cm, classes=variable.labels, output_file='{:d}.png'.format(i))
+
+    plot_confusion_matrix(cm, classes=variable.labels, output_file=cm_file)
     i = i + 1
