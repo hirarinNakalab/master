@@ -1,12 +1,15 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from gensim import models
+from imblearn.over_sampling import SMOTE, ADASYN
 from sklearn import svm
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
+from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier, VotingClassifier
+from sklearn.linear_model import LogisticRegression
 from parseValidFiles import *
-from gensim import models
-from sklearn.metrics import classification_report, roc_curve, auc, precision_recall_curve
-from imblearn.over_sampling import SMOTE
-
+import warnings
+warnings.filterwarnings('ignore')
 
 LOAD_MODEL = 'master(wiki-only).model'
 model = models.Doc2Vec.load(LOAD_MODEL)
@@ -44,28 +47,33 @@ class Variable:
 variable = Variable()
 
 x, y = create_X_Y(variable.DIRS)
-print(x.shape, y.shape)
-sm = SMOTE(random_state=42)
-x_res, y_res = sm.fit_resample(x, y)
-print(x_res.shape, y_res.shape)
+
 kfold = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-parameters = {'gamma': [0.01, 0.02, 0.05, 0.1, 0.2, 1.0], 'degree': [1, 2, 3]}
-gs = GridSearchCV(svm.SVC(kernel='poly', class_weight="balanced", probability=True), parameters, cv=5)
 
-for train, test in kfold.split(x_res, y_res):
-    gs.fit(x_res[train], y_res[train])
+parameters = [
+    {'kernel':['rbf'], 'gamma':np.linspace(0.001, 0.004, 50), 'C':np.linspace(10, 20, 50)},
+    # {'kernel':['linear'], 'C': [1, 10, 100, 1000]}
+]
+gs = GridSearchCV(svm.SVC(class_weight="balanced"), param_grid=parameters, cv=5)
+
+precision = []
+recall = []
+f1_sc = []
+for train, test in kfold.split(x, y):
+    sm = SMOTE(random_state=42, kind='svm')
+    # adasyn = ADASYN(random_state=42)
+    x_res, y_res = sm.fit_resample(x[train], y[train])
+    gs.fit(x_res, y_res)
+    # gs.fit(x[train], y[train])
     print('Best score', gs.best_score_)
+    print('Best model', gs.best_estimator_)
 
-    pred = gs.predict(x_res[test])
-    print(classification_report(y_res[test], pred))
+    pred = gs.predict(x[test])
+    print(confusion_matrix(y[test], pred))
+    precision.append(precision_score(y[test], pred, average="weighted"))
+    recall.append(recall_score(y[test], pred, average="weighted"))
+    f1_sc.append(f1_score(y[test], pred, average="weighted"))
 
-    prob = gs.predict_proba(x_res[test])
-    fpr, tpr, thresholds = roc_curve(y_res[test], prob)
-    precision, recall, thresholds = precision_recall_curve(y_res[test], prob)
-    area = auc(recall, precision)
-    print("auc:", area)
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr)
-    plt.title("ROC curve")
-    plt.show()
-
+print("precision:{:.2f}".format(np.mean(precision)))
+print("recall:{:.2f}".format(np.mean(recall)))
+print("f1_score:{:.2f}".format(np.mean(f1_sc)))
